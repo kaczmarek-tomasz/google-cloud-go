@@ -438,9 +438,12 @@ func filterRow(f *btpb.RowFilter, r *row) bool {
 		return true
 	case *btpb.RowFilter_Interleave_:
 		srs := make([]*row, 0, len(f.Interleave.Filters))
+		var anyMatches = false
 		for _, sub := range f.Interleave.Filters {
 			sr := r.copy()
-			filterRow(sub, sr)
+			if filterRow(sub, sr) {
+				anyMatches = true
+			}
 			srs = append(srs, sr)
 		}
 		// merge
@@ -454,14 +457,8 @@ func filterRow(f *btpb.RowFilter, r *row) bool {
 				}
 			}
 		}
-		var count int
-		for _, fam := range r.families {
-			for _, cs := range fam.cells {
-				sort.Sort(byDescTS(cs))
-				count += len(cs)
-			}
-		}
-		return count > 0
+
+		return anyMatches
 	case *btpb.RowFilter_CellsPerColumnLimitFilter:
 		lim := int(f.CellsPerColumnLimitFilter)
 		for _, fam := range r.families {
